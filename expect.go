@@ -1,4 +1,4 @@
-package expect
+package assert
 
 import (
 	"reflect"
@@ -58,8 +58,8 @@ type TestingInterface interface {
 	Run(name string, f func(t *testing.T)) bool
 }
 
-// ExpectSuite ..
-func ExpectSuite(t TestingInterface) func(any) *expectLevel1 {
+// Expect ..
+func Expect(t TestingInterface) func(any) *expectLevel1 {
 	t.Helper()
 	return func(value any) *expectLevel1 {
 		t.Helper()

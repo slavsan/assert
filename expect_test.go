@@ -1,18 +1,18 @@
-package expect_test
+package assert_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/slavsan/assert/expect"
+	"github.com/slavsan/assert"
 )
 
 type mockTesting struct {
 	calls []string
 }
 
-var _ expect.TestingInterface = (*mockTesting)(nil)
-var _ expect.TestingInterface = (*testing.T)(nil)
+var _ assert.TestingInterface = (*mockTesting)(nil)
+var _ assert.TestingInterface = (*testing.T)(nil)
 
 func (m *mockTesting) Helper() {
 }
@@ -41,7 +41,7 @@ func TestExpect(t *testing.T) {
 		for _, tc := range testCases {
 			tc := tc
 			t.Run("", func(t *testing.T) {
-				expect := expect.ExpectSuite(mock)
+				expect := assert.Expect(mock)
 
 				mock.calls = []string{}
 				expect(tc.input).To.Be.True()
@@ -69,7 +69,7 @@ func TestExpect(t *testing.T) {
 		for _, tc := range testCases {
 			tc := tc
 			t.Run("", func(t *testing.T) {
-				expect := expect.ExpectSuite(mock)
+				expect := assert.Expect(mock)
 				mock.calls = []string{}
 				expect(tc.input).To.Be.False()
 				if len(mock.calls) != tc.callsCount {
@@ -106,7 +106,7 @@ func TestExpect(t *testing.T) {
 		for _, tc := range testCases {
 			tc := tc
 			t.Run("", func(t *testing.T) {
-				expect := expect.ExpectSuite(mock)
+				expect := assert.Expect(mock)
 				mock.calls = []string{}
 				expect(tc.left).To.Be.EqualTo(tc.right)
 				if len(mock.calls) != tc.callsCount {
@@ -143,7 +143,7 @@ func TestExpect(t *testing.T) {
 		for _, tc := range testCases {
 			tc := tc
 			t.Run("", func(t *testing.T) {
-				expect := expect.ExpectSuite(mock)
+				expect := assert.Expect(mock)
 				mock.calls = []string{}
 				expect(tc.input).To.Be.Nil()
 				if len(mock.calls) != tc.callsCount {
@@ -181,7 +181,7 @@ func TestExpect(t *testing.T) {
 		for _, tc := range testCases {
 			tc := tc
 			t.Run("", func(t *testing.T) {
-				expect := expect.ExpectSuite(mock)
+				expect := assert.Expect(mock)
 				mock.calls = []string{}
 				expect(tc.input).To.Have.LengthOf(tc.length)
 				if len(mock.calls) != tc.callsCount {
