@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/slavsan/expect/expect"
+	"github.com/slavsan/assert/expect"
 )
 
 type mockTesting struct {
