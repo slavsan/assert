@@ -1,6 +1,7 @@
 package assert_test
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -8,7 +9,8 @@ import (
 )
 
 type mockTesting struct {
-	calls []string
+	calls  []string
+	calls2 []string
 }
 
 var _ assert.TestingInterface = (*mockTesting)(nil)
@@ -19,6 +21,10 @@ func (m *mockTesting) Helper() {
 
 func (m *mockTesting) Errorf(format string, args ...interface{}) {
 	m.calls = append(m.calls, fmt.Sprintf(format, args...))
+}
+
+func (m *mockTesting) Fatalf(format string, args ...interface{}) {
+	m.calls2 = append(m.calls2, fmt.Sprintf(format, args...))
 }
 
 func (m *mockTesting) Run(name string, f func(t *testing.T)) bool {
@@ -41,10 +47,10 @@ func TestExpect(t *testing.T) {
 		for _, tc := range testCases {
 			tc := tc
 			t.Run("", func(t *testing.T) {
-				expect := assert.Expect(mock)
+				expect := assert.Expect
 
 				mock.calls = []string{}
-				expect(tc.input).To.Be.True()
+				expect(tc.input).To.Be.True(mock)
 				if len(mock.calls) != tc.callsCount {
 					t.Errorf("expected Errorf to have been called %d times but it was called %d times", tc.callsCount, len(mock.calls))
 				}
@@ -69,9 +75,9 @@ func TestExpect(t *testing.T) {
 		for _, tc := range testCases {
 			tc := tc
 			t.Run("", func(t *testing.T) {
-				expect := assert.Expect(mock)
+				expect := assert.Expect
 				mock.calls = []string{}
-				expect(tc.input).To.Be.False()
+				expect(tc.input).To.Be.False(mock)
 				if len(mock.calls) != tc.callsCount {
 					t.Errorf("expected Errorf to have been called %d times but it was called %d times", tc.callsCount, len(mock.calls))
 				}
@@ -106,9 +112,9 @@ func TestExpect(t *testing.T) {
 		for _, tc := range testCases {
 			tc := tc
 			t.Run("", func(t *testing.T) {
-				expect := assert.Expect(mock)
+				expect := assert.Expect
 				mock.calls = []string{}
-				expect(tc.left).To.Be.EqualTo(tc.right)
+				expect(tc.left).To.Be.EqualTo(tc.right, mock)
 				if len(mock.calls) != tc.callsCount {
 					t.Errorf("expected Errorf to have been called %d times but it was called %d times", tc.callsCount, len(mock.calls))
 				}
@@ -143,9 +149,9 @@ func TestExpect(t *testing.T) {
 		for _, tc := range testCases {
 			tc := tc
 			t.Run("", func(t *testing.T) {
-				expect := assert.Expect(mock)
+				expect := assert.Expect
 				mock.calls = []string{}
-				expect(tc.input).To.Be.Nil()
+				expect(tc.input).To.Be.Nil(mock)
 				if len(mock.calls) != tc.callsCount {
 					t.Errorf("expected Errorf to have been called %d times but it was called %d times", tc.callsCount, len(mock.calls))
 				}
@@ -181,9 +187,9 @@ func TestExpect(t *testing.T) {
 		for _, tc := range testCases {
 			tc := tc
 			t.Run("", func(t *testing.T) {
-				expect := assert.Expect(mock)
+				expect := assert.Expect
 				mock.calls = []string{}
-				expect(tc.input).To.Have.LengthOf(tc.length)
+				expect(tc.input).To.Have.LengthOf(tc.length, mock)
 				if len(mock.calls) != tc.callsCount {
 					t.Errorf("expected Errorf to have been called %d times but it was called %d times (with: %#v)", tc.callsCount, len(mock.calls), mock.calls)
 				}
@@ -195,4 +201,84 @@ func TestExpect(t *testing.T) {
 			})
 		}
 	})
+	t.Run("expect.To.MatchError", func(t *testing.T) {
+		testCases := []struct {
+			input      interface{}
+			message    string
+			callsCount int
+			calls      []string
+		}{
+			{nil, "some error message", 1, []string{"expected to match error but got nil value"}},
+			{func() *string { return nil }(), "some error message", 1, []string{"expected to match error but got nil value"}},
+			{func() error { return nil }(), "some error message", 1, []string{"expected to match error but got nil value"}},
+			{func() error { var err error; return err }(), "some error message", 1, []string{"expected to match error but got nil value"}},
+			{5, "some error message", 1, []string{"expected to match error but value is not an error"}},
+			{2.3, "some error message", 1, []string{"expected to match error but value is not an error"}},
+			{"just a string, not an error", "some error message", 1, []string{"expected to match error but value is not an error"}},
+			{func() error { return errors.New("some error message") }(), "some other error message", 1, []string{"expected error to contain message\n\t    actual error: some error message (*errors.errorString)\n\texpected message: some other error message\n"}},
+			{customError{}, "some other error message", 1, []string{"expected error to contain message\n\t    actual error: my custom error (assert_test.customError)\n\texpected message: some other error message\n"}},
+			{&customError{}, "some other error message", 1, []string{"expected error to contain message\n\t    actual error: my custom error (*assert_test.customError)\n\texpected message: some other error message\n"}},
+			{func() error { return errors.New("same error message") }(), "same error message", 0, []string{}},
+			{func() error { return errors.New("with substring error message") }(), "substring error", 0, []string{}},
+		}
+		for _, tc := range testCases {
+			tc := tc
+			t.Run("", func(t *testing.T) {
+				expect := assert.Expect
+				mock.calls = []string{}
+				expect(tc.input).To.MatchError(tc.message, mock)
+				if len(mock.calls) != tc.callsCount {
+					t.Errorf("expected Errorf to have been called %d times but it was called %d times (with: %#v)", tc.callsCount, len(mock.calls), mock.calls)
+				}
+				for i, x := range tc.calls {
+					if mock.calls[i] != x {
+						t.Errorf("expected \"%s\" but got \"%s\"", x, mock.calls[i])
+					}
+				}
+			})
+		}
+	})
+	t.Run("expect.To.MatchExactError", func(t *testing.T) {
+		testCases := []struct {
+			input      interface{}
+			message    string
+			callsCount int
+			calls      []string
+		}{
+			{nil, "some error message", 1, []string{"expected to match error but got nil value"}},
+			{func() *string { return nil }(), "some error message", 1, []string{"expected to match error but got nil value"}},
+			{func() error { return nil }(), "some error message", 1, []string{"expected to match error but got nil value"}},
+			{func() error { var err error; return err }(), "some error message", 1, []string{"expected to match error but got nil value"}},
+			{5, "some error message", 1, []string{"expected to match error but value is not an error"}},
+			{2.3, "some error message", 1, []string{"expected to match error but value is not an error"}},
+			{"just a string, not an error", "some error message", 1, []string{"expected to match error but value is not an error"}},
+			{func() error { return errors.New("some error message") }(), "some other error message", 1, []string{"expected error to contain message\n\t    actual error: some error message (*errors.errorString)\n\texpected message: some other error message\n"}},
+			{customError{}, "some other error message", 1, []string{"expected error to contain message\n\t    actual error: my custom error (assert_test.customError)\n\texpected message: some other error message\n"}},
+			{&customError{}, "some other error message", 1, []string{"expected error to contain message\n\t    actual error: my custom error (*assert_test.customError)\n\texpected message: some other error message\n"}},
+			{func() error { return errors.New("same error message") }(), "same error message", 0, []string{}},
+			{func() error { return errors.New("with substring error message") }(), "substring error", 1, []string{"expected error to contain message\n\t    actual error: with substring error message (*errors.errorString)\n\texpected message: substring error\n"}},
+		}
+		for _, tc := range testCases {
+			tc := tc
+			t.Run("", func(t *testing.T) {
+				expect := assert.Expect
+				mock.calls = []string{}
+				expect(tc.input).To.MatchExactError(tc.message, mock)
+				if len(mock.calls) != tc.callsCount {
+					t.Errorf("expected Errorf to have been called %d times but it was called %d times (with: %#v)", tc.callsCount, len(mock.calls), mock.calls)
+				}
+				for i, x := range tc.calls {
+					if mock.calls[i] != x {
+						t.Errorf("expected \"%s\" but got \"%s\"", x, mock.calls[i])
+					}
+				}
+			})
+		}
+	})
+}
+
+type customError struct{}
+
+func (e customError) Error() string {
+	return "my custom error"
 }
